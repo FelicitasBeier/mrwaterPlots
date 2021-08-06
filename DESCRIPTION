@@ -1,0 +1,31 @@
+Package: mrwaterPlots
+Type: Package
+Title: mrwater plots
+Version: 0.5.199
+Date: 2021-08-05
+Authors@R: c(person("Felicitas", "Beier", email = "beier@pik-potsdam.de", role = c("aut","cre")))
+Description: Provides plot functions for mrwater outputs.
+Depends:
+    R(>= 2.10.0),
+    madrat(>= 1.72),
+    mrcommons,
+    mrmagpie
+    mrwater
+Imports:
+    stats,
+    utils,
+    luplot,
+    magclass(>= 3.17),
+    ggplot2
+License: LGPL-3 | file LICENSE
+LazyData: no
+Encoding: UTF-8
+RoxygenNote: 7.1.1
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat,
+    cowplot,
+    plotrix, 
+    covr
+VignetteBuilder: knitr
