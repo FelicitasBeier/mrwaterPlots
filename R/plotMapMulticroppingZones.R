@@ -2,7 +2,8 @@
 #' @description plot map of multiple cropping zones for rainfed, irrigated and
 #'              the difference between the two
 #'
-#' @param input object containing the multiple cropping zone classification
+#' @param version subfolder of inputdata
+#' @param input   object containing the multiple cropping zone classification
 #'
 #' @return map of magpie cells
 #' @author Felicitas Beier
@@ -14,13 +15,15 @@
 #' @importFrom luplot plotmap2
 #' @importFrom mrwater toolLPJarrayToMAgPIEmap
 #' @importFrom ggplot2 theme element_blank element_rect element_text
+#' @importFrom ggpubr ggarrange
 #'
 #' @export
 
-plotMapMulticroppingZones <- function(input = "multicroppingZones") {
+plotMapMulticroppingZones <- function(version = "GT500",
+                                      input = "multicroppingZones") {
 
   # Path
-  inputdatapath <- paste0(getwd(), "/inputdata")
+  inputdatapath <- paste0(getwd(), "/inputdata/", version, "/")
 
   # Read in data
   x             <- read.magpie(paste0(inputdatapath, input, ".mz"))
@@ -32,7 +35,7 @@ plotMapMulticroppingZones <- function(input = "multicroppingZones") {
 
   # Create plot(s)
   pRf <- plotmap2(toolLPJarrayToMAgPIEmap(xRf),
-                  title = "Multiple Cropping Zones (rainfed)", legendname = "No. of seasons") +
+                  title = "(A) Multiple Cropping Zones (rainfed)", legendname = "No. of seasons") +
     theme(title = element_blank(),
           panel.background = element_rect(fill = "transparent", colour = NA),
           plot.background = element_rect(fill = "transparent", colour = NA),
@@ -42,7 +45,7 @@ plotMapMulticroppingZones <- function(input = "multicroppingZones") {
           strip.text = element_text(color = "white"))
 
   pIrr <- plotmap2(toolLPJarrayToMAgPIEmap(xIrr),
-                  title = "Multiple Cropping Zones (irrigated)", legendname = "No. of seasons") +
+                  title = "(B) Multiple Cropping Zones (irrigated)", legendname = "No. of seasons") +
     theme(title = element_blank(),
           panel.background = element_rect(fill = "transparent", colour = NA),
           plot.background = element_rect(fill = "transparent", colour = NA),
@@ -52,7 +55,7 @@ plotMapMulticroppingZones <- function(input = "multicroppingZones") {
           strip.text = element_text(color = "white"))
 
   pDiff <- plotmap2(toolLPJarrayToMAgPIEmap(xDiff),
-                   title = "Additional cropping seasons through irrigation", legendname = "No. of seasons") +
+                   title = "(C) Additional cropping seasons through irrigation", legendname = "No. of add. seasons") +
     theme(title = element_blank(),
           panel.background = element_rect(fill = "transparent", colour = NA),
           plot.background = element_rect(fill = "transparent", colour = NA),
@@ -61,7 +64,8 @@ plotMapMulticroppingZones <- function(input = "multicroppingZones") {
           strip.background = element_rect(fill = "transparent", colour = NA),
           strip.text = element_text(color = "white"))
 
-  out <- ggarrange(plotlist = c(pRf, pIrr, pDiff), ncol = 3)
+  out <- ggarrange(pRf, pIrr, pDiff, ncol = 1, nrow = 3,
+                   common.legend = TRUE, legend = "right")
 
   return(out)
 }

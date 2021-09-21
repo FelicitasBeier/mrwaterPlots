@@ -2,29 +2,9 @@
 #' @description plot minimum monetary yield gain per ha achieved
 #'              on related potentially irrigated area
 #'
-#' @param region           regional resolution (can be country iso-code, region name and respective mapping "EUR:H12", "GLO" for global)
-#' @param y_axis_range     range of y-axis (monetary irrigation gain) to be depicted on the curve
-#' @param scenario         combination of EFP and non-agricultural water use scenario
-#'                         to be displayed in plot separated by "."
-#' @param lpjml            LPJmL version required for respective inputs: natveg or crop
-#' @param selectyears      years for which irrigatable area is calculated
-#' @param iniyear          initialization year
-#' @param climatetype      Switch between different climate scenarios or historical baseline "GSWP3-W5E5:historical"
-#' @param EFRmethod        EFR method used including selected strictness of EFRs (e.g. Smakhtin:good, VMF:fair)
-#' @param accessibilityrule Scalar value defining the strictness of accessibility restriction: discharge that is exceeded x percent of the time on average throughout a year (Qx). Default: 0.5 (Q50) (e.g. Q75: 0.25, Q50: 0.5)
-#' @param yieldcalib       FAO (LPJmL yields calibrated with current FAO yield) or calibrated (LPJmL yield potentials harmonized to baseline and calibrated for proxycrops) or none (smoothed LPJmL yield potentials, not harmonized, not calibrated)
-#' @param rankmethod       method of calculating the rank: "meancellrank" (default): mean over cellrank of proxy crops, "meancroprank": rank over mean of proxy crops (normalized), "meanpricedcroprank": rank over mean of proxy crops (normalized using price), "watervalue": rank over value of irrigation water; and fullpotentail TRUE/FALSE separated by ":" (TRUE: Full irrigation potential (cell receives full irrigation requirements in total area). FALSE: reduced potential of cell receives at later stage in allocation algorithm)
-#' @param allocationrule   Rule to be applied for river basin discharge allocation across cells of river basin ("optimization" (default), "upstreamfirst", "equality")
-#' @param thresholdtype    Thresholdtype of yield improvement potential required for water allocation in upstreamfirst algorithm: TRUE (default): monetary yield gain (USD05/ha), FALSE: yield gain in tDM/ha
-#' @param irrigationsystem Irrigation system to be used for river basin discharge allocation algorithm ("surface", "sprinkler", "drip", "initialization")
-#' @param cropmix          cropmix for which irrigation yield improvement is calculated
-#'                         can be selection of proxycrop(s) for calculation of average yield gain
-#'                         or hist_irrig or hist_total for historical cropmix
-#' @param potential_wat    if TRUE: potential available water and areas used, if FALSE: currently reserved water on current irrigated cropland used
-#' @param com_ag           if TRUE: the currently already irrigated areas in initialization year are reserved for irrigation, if FALSE: no irrigation areas reserved (irrigation potential)
-#' @param multicropping    Multicropping activated (TRUE) or not (FALSE)
-#' @param display          specifies whether current cropland, potential cropland
-#'                         or both should be displayed in the graph
+#' @param version        subfolder of output results
+#' @param EFP            environmental flow policy "on" or "off
+#' @param aggregation    "countries" or "basins"
 #'
 #' @return magpie object in cellular resolution
 #' @author Felicitas Beier
@@ -34,281 +14,141 @@
 #' plotCurveIrrigAreaDemand(y_axis_range = seq(0, 10000, by = 100), scenario = "ssp2")
 #' }
 #'
-#' @importFrom madrat calcOutput
-#' @importFrom magclass dimSums collapseNames
-#' @importFrom stats reshape
-#' @importFrom ggplot2 ggplot geom_line geom_vline geom_point aes_string ggtitle xlab ylab theme_bw geom_text xlim ylim
+#' @importFrom magclass dimSums collapseNames read.magpie
+#' @importFrom ggplot2 ggplot facet_wrap geom_line geom_point aes ggtitle xlab ylab theme theme_bw geom_text xlim ylim ggsave scale_linetype_manual scale_color_manual scale_shape_manual
+#' @importFrom mrwater toolSelectRiverBasin
 #'
 #' @export
 
-plotCurveIrrigAreaDemand <- function(y_axis_range, region = "GLO", scenario,
-                                     lpjml, selectyears, iniyear, climatetype, EFRmethod,
-                                     accessibilityrule, rankmethod, yieldcalib, allocationrule,
-                                     thresholdtype, irrigationsystem, cropmix, potential_wat = TRUE,
-                                     com_ag, multicropping, display) {
+plotCurveIrrigAreaDemand <- function(version = "GT500",
+                                     EFP = "on",
+                                     aggregation = "countries") {
 
-  ## Main data: with water constraint
-  # on current cropland
-  inputdata <- calcOutput("EconOfIrrig", GT_range = y_axis_range, scenario = gsub(".*\\.", "", scenario), season = "single", region = region, output = "IrrigArea",
-                       lpjml = lpjml, selectyears = selectyears, climatetype = climatetype,
-                       EFRmethod = EFRmethod, accessibilityrule = accessibilityrule, rankmethod = rankmethod, yieldcalib = FALSE,
-                       allocationrule = allocationrule, thresholdtype = thresholdtype, irrigationsystem = irrigationsystem,
-                       avlland_scen = "currCropland:2010", cropmix = cropmix, potential_wat = TRUE, com_ag = com_ag, multicropping = multicropping, aggregate = FALSE)
-  inputdata <- as.data.frame(inputdata)
+  ### Path ###
+  inputdatapath <- paste0(getwd(), "/inputdata/", version, "/")
 
-  if (multicropping) {
-    tmp <- calcOutput("EconOfIrrig", GT_range = y_axis_range, scenario = gsub(".*\\.", "", scenario), season = "double", region = region, output = "IrrigArea",
-                            lpjml = lpjml, selectyears = selectyears, climatetype = climatetype,
-                            EFRmethod = EFRmethod, accessibilityrule = accessibilityrule, rankmethod = rankmethod, yieldcalib = FALSE,
-                            allocationrule = allocationrule, thresholdtype = thresholdtype, irrigationsystem = irrigationsystem,
-                            avlland_scen = "currCropland:2010", cropmix = cropmix, potential_wat = TRUE, com_ag = com_ag, multicropping = multicropping, aggregate = FALSE)
-    tmp <- as.data.frame(tmp)
+  ### Read in data ###
+  currCropland1   <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_curr_single.mz"))[, , EFP])
+  potCropland1    <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))[, , EFP])
+  currYieldgain1  <- read.magpie(paste0(inputdatapath, "yieldgainarea_curr.mz"))
+  potYieldgain1   <- read.magpie(paste0(inputdatapath, "yieldgainarea_pot.mz"))
+  currentLUH      <- dimSums(read.magpie(paste0(inputdatapath, "cropareaLUH.mz"))[, , "irrigated"], dim = "MAG")
 
-    tmp2 <- calcOutput("EconOfIrrig", GT_range = y_axis_range, scenario = gsub(".*\\.", "", scenario), season = "triple", region = region, output = "IrrigArea",
-                      lpjml = lpjml, selectyears = selectyears, climatetype = climatetype,
-                      EFRmethod = EFRmethod, accessibilityrule = accessibilityrule, rankmethod = rankmethod, yieldcalib = FALSE,
-                      allocationrule = allocationrule, thresholdtype = thresholdtype, irrigationsystem = irrigationsystem,
-                      avlland_scen = "currCropland:2010", cropmix = cropmix, potential_wat = TRUE, com_ag = com_ag, multicropping = multicropping, aggregate = FALSE)
-    tmp2 <- as.data.frame(tmp2)
+  ### Aggregate and rearrange data ###
+  if (aggregation == "countries") {
 
+    df   <- as.data.frame(dimSums(currCropland1, dim = c(1.1, 1.2)))
+    df$IrrigArea <- "Potentially Irrigated Area \non current cropland \n(given local water constraints)"
 
-    df <- data.frame(GT = as.numeric(as.character(inputdata$Data1)),
-                     scen = as.character(inputdata$Data2),
-                     IrrigArea1 = inputdata$Value,
-                     IrrigArea2 = tmp$Value,
-                     IrrigArea3 = tmp2$Value,
+    tmp    <- as.data.frame(dimSums(potCropland1, dim = c(1.1, 1.2)))
+    tmp$IrrigArea <- "Potentially Irrigated Area \non potential cropland \n(given local water constraints)"
+    df <- rbind(df, tmp)
+
+    tmp    <- as.data.frame(dimSums(currYieldgain1, dim = c(1.1, 1.2)))
+    tmp$IrrigArea <- "Areas with irrigation yield gain \non current cropland \n(without water constraints)"
+    df <- rbind(df, tmp)
+
+    tmp    <- as.data.frame(dimSums(potYieldgain1, dim = c(1.1, 1.2)))
+    tmp$IrrigArea <- "Areas with irrigation yield gain \non potential cropland \n(without water constraints)"
+    df <- rbind(df, tmp)
+
+    df <- data.frame(Region = df$Region,
+                     GT = as.numeric(as.character(df$Data1)),
+                     Group = df$IrrigArea,
+                     IrrigArea = df$Value,
+                     stringsAsFactors = FALSE)
+    df$LUH <- rep(as.array(dimSums(currentLUH, dim = c(1.1, 1.2))), length(df$Group) / length(as.array(dimSums(currentLUH, dim = c(1.1, 1.2)))))
+
+    df <- df[df$Region %in% c("CHN", "IND", "AUS", "USA", "MEX", "BRA", "ITA", "TUR", "SDN"), ]
+    df$Region <- factor(df$Region, levels = c("CHN", "IND", "AUS", "USA", "MEX", "BRA", "ITA", "TUR", "SDN"))
+
+  } else if (aggregation == "basins") {
+
+    basinList <- c("Mississippi", "Nile", "Chang Jiang", "Ganges", "Indus",
+                   "Murray", "Huang He", "Colorado", "Danube", "Mekong",
+                   "Parana", "Syr-Darya", "Amu-Darya", "Orange", "Guadalquivir")
+
+    selectedBasins <- c("Chang Jiang", "Huang He", "Mekong",
+                        "Mississippi", "Colorado", "Murray",
+                        "Parana", "Ganges", "Indus")
+    framestructure <- as.data.frame(new.magpie(cells_and_regions = selectedBasins,
+                                               years = getYears(currCropland1),
+                                               names = getNames(currCropland1)))
+    df <- framestructure
+    for (b in selectedBasins) {
+      df$Value[df$Region == b] <- dimSums(currCropland1[toolSelectRiverBasin(basinname = b), , ], dim = 1)
+    }
+    df$Group <- "Potentially Irrigated Area \non current cropland \n(given local water constraints)"
+
+    tmp <- framestructure
+    for (b in selectedBasins) {
+      tmp$Value[tmp$Region == b] <- dimSums(potCropland1[toolSelectRiverBasin(basinname = b), , ], dim = 1)
+    }
+    tmp$Group <- "Potentially Irrigated Area \non potential cropland \n(given local water constraints)"
+    df <- rbind(df, tmp)
+
+    tmp <- framestructure
+    for (b in selectedBasins) {
+      tmp$Value[tmp$Region == b] <- dimSums(currYieldgain1[toolSelectRiverBasin(basinname = b), , ], dim = 1)
+    }
+    tmp$Group <- "Areas with irrigation yield gain \non current cropland \n(without water constraints)"
+    df <- rbind(df, tmp)
+
+    tmp <- framestructure
+    for (b in selectedBasins) {
+      tmp$Value[tmp$Region == b] <- dimSums(potYieldgain1[toolSelectRiverBasin(basinname = b), , ], dim = 1)
+    }
+    tmp$Group <- "Areas with irrigation yield gain \non potential cropland \n(without water constraints)"
+    df <- rbind(df, tmp)
+
+    df <- data.frame(Region = df$Region,
+                     GT = as.numeric(as.character(df$Data1)),
+                     Group = df$Group,
+                     IrrigArea = df$Value,
                      stringsAsFactors = FALSE)
 
-  } else {
-    df <- data.frame(GT = as.numeric(as.character(inputdata$Data1)),
-                     scen = as.character(inputdata$Data2),
-                     IrrigArea = inputdata$Value, stringsAsFactors = FALSE)
-  }
-
-  df            <- reshape(df, idvar = "GT", timevar = "scen", direction = "wide")
-  names(df)[-1] <- paste(names(df)[-1], "CurrCropland", sep = ".")
-
-  # on potential cropland
-  inputdata <- calcOutput("EconOfIrrig", GT_range = y_axis_range, scenario = gsub(".*\\.", "", scenario), season = "single", region = region, output = "IrrigArea",
-                          lpjml = lpjml, selectyears = selectyears, climatetype = climatetype,
-                          EFRmethod = EFRmethod, accessibilityrule = accessibilityrule, rankmethod = rankmethod, yieldcalib = FALSE,
-                          allocationrule = allocationrule, thresholdtype = thresholdtype, irrigationsystem = irrigationsystem,
-                          avlland_scen = "potIrrig_HalfEarth:2010", cropmix = cropmix, potential_wat = TRUE, com_ag = com_ag, multicropping = multicropping, aggregate = FALSE)
-  inputdata <- as.data.frame(inputdata)
-
-  if (multicropping) {
-    tmp <- calcOutput("EconOfIrrig", GT_range = y_axis_range, scenario = gsub(".*\\.", "", scenario), season = "double", region = region, output = "IrrigArea",
-                      lpjml = lpjml, selectyears = selectyears, climatetype = climatetype,
-                      EFRmethod = EFRmethod, accessibilityrule = accessibilityrule, rankmethod = rankmethod, yieldcalib = FALSE,
-                      allocationrule = allocationrule, thresholdtype = thresholdtype, irrigationsystem = irrigationsystem,
-                      avlland_scen = "potIrrig_HalfEarth:2010", cropmix = cropmix, potential_wat = TRUE, com_ag = com_ag, multicropping = multicropping, aggregate = FALSE)
-    tmp <- as.data.frame(tmp)
-
-    tmp2 <- calcOutput("EconOfIrrig", GT_range = y_axis_range, scenario = gsub(".*\\.", "", scenario), season = "triple", region = region, output = "IrrigArea",
-                       lpjml = lpjml, selectyears = selectyears, climatetype = climatetype,
-                       EFRmethod = EFRmethod, accessibilityrule = accessibilityrule, rankmethod = rankmethod, yieldcalib = FALSE,
-                       allocationrule = allocationrule, thresholdtype = thresholdtype, irrigationsystem = irrigationsystem,
-                       avlland_scen = "potIrrig_HalfEarth:2010", cropmix = cropmix, potential_wat = TRUE, com_ag = com_ag, multicropping = multicropping, aggregate = FALSE)
-    tmp2 <- as.data.frame(tmp2)
-
-
-    df <- data.frame(GT = as.numeric(as.character(inputdata$Data1)),
-                     scen = as.character(inputdata$Data2),
-                     IrrigArea1 = inputdata$Value,
-                     IrrigArea2 = tmp$Value,
-                     IrrigArea3 = tmp2$Value,
-                     stringsAsFactors = FALSE)
-  } else {
-    tmp <- data.frame(GT = as.numeric(as.character(inputdata$Data1)),
-                     scen = as.character(inputdata$Data2),
-                     IrrigArea = inputdata$Value, stringsAsFactors = FALSE)
-  }
-
-  tmp            <- reshape(tmp, idvar = "GT", timevar = "scen", direction = "wide")
-  names(tmp)[-1] <- paste(names(tmp)[-1], "PotCropland", sep = ".")
-
-  df             <- merge(df, tmp)
-
-  ## Reference data: without water constraint
-  # current cropland
-  inputdata <- calcOutput("YieldgainArea", region = region, GT_range = y_axis_range, lpjml = lpjml,
-                          selectyears = selectyears, climatetype = climatetype, EFRmethod = EFRmethod,
-                          yieldcalib = yieldcalib, thresholdtype = thresholdtype, avlland_scen = "currCropland:2010",
-                          cropmix = cropmix, multicropping = multicropping, aggregate = FALSE)
-  inputdata <- as.data.frame(inputdata)
-
-  if (multicropping) {
-    tmp <- data.frame(GT = as.numeric(as.character(levels(inputdata$Data1[inputdata$Data2 == 1]))),
-                      YieldGainArea1 = inputdata$Value[inputdata$Data2 == "addMC0"],
-                      YieldGainArea2 = inputdata$Value[inputdata$Data2 == "addMC1"],
-                      YieldGainArea3 = inputdata$Value[inputdata$Data2 == "addMC2"],
-                      stringsAsFactors = FALSE)
-  } else {
-    tmp <- data.frame(GT = as.numeric(as.character(inputdata$Data1)),
-                      YieldGainArea = inputdata$Value, stringsAsFactors = FALSE)
-  }
-
-  names(tmp)[-1] <- paste(names(tmp)[-1], "CurrCropland", sep = ".")
-  df             <- merge(df, tmp)
-
-  # potential cropland
-  inputdata  <- calcOutput("YieldgainArea", region = region, GT_range = y_axis_range, lpjml = lpjml,
-                              selectyears = selectyears, climatetype = climatetype, EFRmethod = EFRmethod,
-                              yieldcalib = yieldcalib, thresholdtype = thresholdtype, avlland_scen = "potIrrig_HalfEarth:2010",
-                              cropmix = cropmix, multicropping = multicropping, aggregate = FALSE)
-  inputdata <- as.data.frame(inputdata)
-
-  if (multicropping) {
-    tmp <- data.frame(GT = as.numeric(as.character(levels(inputdata$Data1[inputdata$Data2 == 1]))),
-                      YieldGainArea1 = inputdata$Value[inputdata$Data2 == "addMC0"],
-                      YieldGainArea2 = inputdata$Value[inputdata$Data2 == "addMC1"],
-                      YieldGainArea3 = inputdata$Value[inputdata$Data2 == "addMC2"],
-                      stringsAsFactors = FALSE)
-  } else {
-    tmp <- data.frame(GT = as.numeric(as.character(inputdata$Data1)),
-                      YieldGainArea = inputdata$Value, stringsAsFactors = FALSE)
-  }
-
-  names(tmp)[-1] <- paste(names(tmp)[-1], "PotCropland", sep = ".")
-  df <- merge(df, tmp)
-
-  ## Reference points
-  # Area that can be irrigated with committed agricultural uses
-  current_fulfilled <- collapseNames(calcOutput("IrrigatableArea", gainthreshold = 0,
-                                      selectyears = selectyears, climatetype = climatetype, lpjml = lpjml,
-                                      accessibilityrule = accessibilityrule, EFRmethod = EFRmethod,
-                                      rankmethod = rankmethod, yieldcalib = yieldcalib, allocationrule = allocationrule,
-                                      thresholdtype = thresholdtype, irrigationsystem = irrigationsystem,
-                                      avlland_scen = "currCropland:2010", cropmix = cropmix, multicropping = multicropping,
-                                      potential_wat = FALSE, com_ag = TRUE, aggregate = FALSE)[, , "irrigatable"][, , "single"])
-  # Area that is irrigated according to LUH
-  current_LUH <- dimSums(calcOutput("Croparea", years = iniyear, sectoral = "kcr",
-                                    cells = "lpjcell", physical = TRUE, cellular = TRUE,
-                                    irrigation = TRUE, aggregate = FALSE)[, , "irrigated"], dim = 3)
-  #### adjust cell name (until 67k cell names fully integrated in calcCroparea and calcLUH2v2!!!) ####
-  map                             <- toolGetMappingCoord2Country()
-  getCells(current_LUH)           <- paste(map$coords, map$iso, sep = ".")
-  names(dimnames(current_LUH))[1] <- "x.y.iso"
-  #### adjust cell name (until 67k cell names fully integrated in calcCroparea and calcLUH2v2!!!) ####
-
-  # sum up over regional dimension
-  current_fulfilled <- toolRegionSums(x = current_fulfilled, region = region)
-  current_LUH       <- toolRegionSums(x = current_LUH,       region = region)
-
-  if (multicropping) {
-
-    if (display == "currCropland") {
-
-      out <- ggplot(data = df, aes_string(y = "GT")) +
-        geom_line(aes_string(x = paste("IrrigArea1", gsub("\\..*", "", scenario), "CurrCropland", sep = ".")), color = "darkgreen", size = 1.1) + geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("IrrigArea2", gsub("\\..*", "", scenario), "CurrCropland", sep = ".")), color = "darkblue", size = 1.1) + geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("IrrigArea3", gsub("\\..*", "", scenario), "CurrCropland", sep = ".")), color = "black", size = 1.1) + geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-
-        geom_line(aes_string(x = paste("YieldGainArea1", "CurrCropland", sep = ".")), color = "darkgreen", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea1", "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea2", "CurrCropland", sep = ".")), color = "darkblue", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea2", "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea3", "CurrCropland", sep = ".")), color = "black", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea3", "CurrCropland", sep = "."))) +
-
-        theme_bw() +
-        scale_x_continuous(expand = c(0, 0), breaks = seq(0, 1400, by = 100)) +
-        scale_y_continuous(expand = c(0, 0), limits = c(0, 3000)) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("on", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "blue", size = 2) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("off", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "red", size = 2) +
-        geom_point(x = as.numeric(current_LUH), y = 0, color = "black", size = 2) +
-        ggtitle("Irrigation Area Demand Curve on current Cropland") + ylab("Monetary yield gain (USD/ha)") + xlab("Potentially irrigated area (Mha)")
-
-
-    } else if (display == "potCropland") {
-
-      out <- ggplot(data = df, aes_string(y = "GT")) +
-        geom_line(aes_string(x = paste("IrrigArea1", gsub("\\..*", "", scenario), "PotCropland", sep = ".")), color = "darkgreen", size = 1.1) + geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("IrrigArea2", gsub("\\..*", "", scenario), "PotCropland", sep = ".")), color = "darkblue", size = 1.1) + geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("IrrigArea3", gsub("\\..*", "", scenario), "PotCropland", sep = ".")), color = "black", size = 1.1) + geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-
-
-        geom_line(aes_string(x = paste("YieldGainArea1", "PotCropland", sep = ".")), color = "darkgreen", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea1", "PotCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea2", "PotCropland", sep = ".")), color = "darkblue", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea2", "PotCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea3", "PotCropland", sep = ".")), color = "black", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea3", "PotCropland", sep = "."))) +
-
-
-        theme_bw() +
-        scale_x_continuous(expand = c(0, 0), breaks = seq(0, 4000, by = 100)) +
-        scale_y_continuous(expand = c(0, 0), limits = c(0, 3000)) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("on", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "blue", size = 2) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("off", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "red", size = 2) +
-        geom_point(x = as.numeric(current_LUH), y = 0, color = "black", size = 2) +
-        ggtitle("Irrigation Area Demand Curve on Potential Cropland") + ylab("Monetary yield gain (USD/ha)") + xlab("Potentially irrigated area (Mha)")
-
-    } else {
-      stop("Please choose if current (currCropland), potential (potCropland)
-           should be displayed in the graph")
+    tmp <- framestructure
+    for (b in selectedBasins) {
+      tmp$Value[tmp$Region == b] <- dimSums(currentLUH[toolSelectRiverBasin(basinname = b), , ], dim = 1)
     }
-
+    df$LUH <- tmp$Value
+    df$Region <- factor(df$Region, levels = selectedBasins)
 
   } else {
-
-    if (display == "currCropland") {
-
-      out <- ggplot(data = df, aes_string(y = "GT")) +
-        geom_line(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = ".")), color = "darkgreen", size = 1.1) +
-        geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea", "CurrCropland", sep = ".")), color = "darkgreen", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea", "CurrCropland", sep = "."))) +
-        theme_bw() +
-        scale_x_continuous(expand = c(0, 0), breaks = seq(0, 1400, by = 100)) +
-        scale_y_continuous(expand = c(0, 0), limits = c(0, 3000)) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("on", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "blue", size = 2) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("off", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "red", size = 2) +
-        geom_point(x = as.numeric(current_LUH), y = 0, color = "black", size = 2) +
-        ggtitle("Irrigation Area Demand Curve on current Cropland") + ylab("Monetary yield gain (USD/ha)") + xlab("Potentially irrigated area (Mha)")
-
-
-    } else if (display == "potCropland") {
-
-      out <- ggplot(data = df, aes_string(y = "GT")) +
-        geom_line(aes_string(x = paste("IrrigArea",  gsub("\\..*", "", scenario), "PotCropland", sep = ".")), color = "darkred", size = 1.1) +
-        geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "PotCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea", "PotCropland", sep = ".")), color = "darkred", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea", "PotCropland", sep = "."))) +
-        theme_bw() +
-        scale_x_continuous(expand = c(0, 0), breaks = seq(0, 4000, by = 100)) +
-        scale_y_continuous(expand = c(0, 0), limits = c(0, 3000)) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("on", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "blue", size = 2) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("off", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "red", size = 2) +
-        geom_point(x = as.numeric(current_LUH), y = 0, color = "black", size = 2) +
-        ggtitle("Irrigation Area Demand Curve on Potential Cropland") + ylab("Monetary yield gain (USD/ha)") + xlab("Potentially irrigated area (Mha)")
-
-
-    } else if (display == "curr+potCropland") {
-
-      out <- ggplot(data = df, aes_string(y = "GT")) +
-        geom_line(aes_string(x = paste("IrrigArea",  gsub("\\..*", "", scenario), "CurrCropland", sep = ".")), color = "darkgreen", size = 1.1) +
-        geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("IrrigArea",  gsub("\\..*", "", scenario), "PotCropland", sep = ".")), color = "darkred", size = 1.1) +
-        geom_point(aes_string(x = paste("IrrigArea", gsub("\\..*", "", scenario), "PotCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea", "CurrCropland", sep = ".")), color = "darkgreen", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea", "CurrCropland", sep = "."))) +
-        geom_line(aes_string(x = paste("YieldGainArea", "PotCropland", sep = ".")), color = "darkred", linetype = "twodash", size = 1.1) +
-        geom_point(aes_string(x = paste("YieldGainArea", "PotCropland", sep = "."))) +
-        theme_bw() +
-        scale_x_continuous(expand = c(0, 0), breaks = seq(0, 4000, by = 100)) +
-        scale_y_continuous(expand = c(0, 0), limits = c(0, 3000)) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("on", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "blue", size = 2) +
-        geom_point(x = as.numeric(current_fulfilled[, , paste("off", gsub(".*\\.", "", scenario), sep = ".")]), y = 0, color = "red", size = 2) +
-        geom_point(x = as.numeric(current_LUH), y = 0, color = "black", size = 2) +
-        ggtitle("Irrigation Area Demand Curve") + ylab("Monetary yield gain (USD/ha)") + xlab("Potentially irrigated area (Mha)")
-
-    } else {
-      stop("Please choose if current (currCropland), potential (potCropland) or
-         both (curr+potCropland) should be displayed in the graph")
-    }
-
+    stop("Chosen aggregation is not yet implemented")
   }
+
+  ### Plot ###
+  out <- ggplot(df, aes(x = IrrigArea, y = GT, color = Group, group = Group, shape = Group)) +
+                geom_point(size = 3) +
+                geom_point(aes(x = LUH, y = 0), size = 5, color = "black", shape = 17) +
+                geom_line(aes(linetype = Group), size = 1.5) +
+                facet_wrap(~Region, scales = "free_x") +
+                scale_color_manual(values = c("#1b9e77", "#7570b3", "#1b9e77", "#7570b3")) +
+                scale_linetype_manual(values = c("dashed", "dashed", "solid", "solid")) +
+                scale_shape_manual(values = c(19, 19, 15, 15)) +
+                scale_x_continuous(expand = c(0, 0)) +
+                scale_y_continuous(expand = c(0, 0)) +
+                xlab("Area (in Mha)") + ylab("Yield return to irrigation (in USD/ha)") +
+                theme_bw() +
+                theme(legend.title         = element_blank(),
+                      legend.position      = "bottom",
+                      legend.text          = element_text(size = 12),
+                      legend.key.width     = unit(2.8, "line"),
+                      legend.justification = c(0, 1),
+                      legend.margin        = margin(t = 0, r = 0, b = 0, l = -77, unit = "pt"),
+                      strip.text         = element_text(size = 18),
+                      strip.background   = element_rect(fill = "#f6f6f6"),
+                      plot.title         = element_text(size = 18),
+                      axis.text.x        = element_text(size = 16),
+                      axis.title.x       = element_text(size = 18),
+                      axis.text.y        = element_text(size = 16),
+                      axis.title.y       = element_text(size = 18),
+                      panel.grid.major.x = element_blank(),
+                      panel.grid.minor.x = element_blank())
+
+  ### Save Plot ###
+  ggsave(paste0(aggregation, "_Curves.pdf"), plot = out, width = 297, height = 210, units = "mm")
 
   return(out)
 }

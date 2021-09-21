@@ -8,6 +8,7 @@ Description: Provides plot functions for mrwater outputs.
 Depends:
     R(>= 2.10.0),
     madrat(>= 1.72),
+    magclass(>= 6.0.0),
     mrcommons,
     mrmagpie
     mrwater
@@ -15,7 +16,6 @@ Imports:
     stats,
     utils,
     luplot,
-    magclass(>= 3.17),
     ggplot2
 License: LGPL-3 | file LICENSE
 LazyData: no
