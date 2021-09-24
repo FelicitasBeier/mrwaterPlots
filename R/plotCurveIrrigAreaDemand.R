@@ -9,11 +9,6 @@
 #' @return magpie object in cellular resolution
 #' @author Felicitas Beier
 #'
-#' @examples
-#' \dontrun{
-#' plotCurveIrrigAreaDemand(y_axis_range = seq(0, 10000, by = 100), scenario = "ssp2")
-#' }
-#'
 #' @importFrom magclass dimSums collapseNames read.magpie
 #' @importFrom ggplot2 ggplot facet_wrap geom_line geom_point aes ggtitle xlab ylab theme theme_bw geom_text xlim ylim ggsave scale_linetype_manual scale_color_manual scale_shape_manual
 #' @importFrom mrwater toolSelectRiverBasin

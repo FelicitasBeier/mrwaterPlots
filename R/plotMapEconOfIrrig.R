@@ -1,11 +1,9 @@
 #' @title       plotMapEconOfIrrig
 #' @description plot 3-layered map representing different irrigation gain thresholds
 #'
-#' @param version   subfolder of inputdata
-#' @param input     Object containing the share of water that is fulfilled
-#' @param year      Year to be shown in plot
-#' @param scenario  EFP scenario and non-agricultural water use scenario
-#'                  separated by "."
+#' @param version       subfolder of inputdata
+#' @param multicropping multicropping activated (TRUE) or not (FALSE)
+#' @param EFP           envrionmental flow protection activated ("on") or not ("off")
 #'
 #' @return map of magpie cells
 #' @author Felicitas Beier
@@ -13,7 +11,7 @@
 #' @examples
 #' \dontrun{ plotMapEconOfIrrig() }
 #'
-#' @importFrom magclass read.magpie
+#' @importFrom magclass read.magpie collapseNames
 #' @importFrom luplot plotmap2
 #' @importFrom mrwater toolLPJarrayToMAgPIEmap
 #' @importFrom ggplot2 theme element_blank element_rect element_text
@@ -23,11 +21,11 @@
 
 plotMapEconOfIrrig <- function(version       = "GT500",
                                multicropping = FALSE,
-                               EFP           = "on",
-                               legendScale   = "Mha") {
+                               EFP           = "on") {
 
   ### Path ###
   inputdatapath   <- paste0(getwd(), "/inputdata/", version, "/")
+  filename        <- "MapEconOfIrrig"
 
   ### Read in data ###
   irrigatableArea <- read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))
@@ -41,15 +39,30 @@ plotMapEconOfIrrig <- function(version       = "GT500",
   x1000             <- irrigatableArea[, , "1000"][, , EFP]
   x1000[x1000 == 0] <- NA
 
+  potCropland1      <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))[, , EFP])
+  potCropland1      <- dimSums(potCropland1, dim = 1)
+  getCells(potCropland1) <- "GLO"
+  potCropland1           <- data.frame(y = as.numeric(as.character(as.data.frame(potCropland1)$Data1)),
+                                       x = as.data.frame(potCropland1)$Value, stringsAsFactors = FALSE)
+  # For curve plot
+  x  <- potCropland1$x
+  y  <- potCropland1$y
+  a1 <- x[y >= 1000]
+  b1 <- y[x == x[y >= 1000]]
+  a2 <- x[y <= 1000 & y >= 500]
+  b2 <- y[x == x[y <= 1000 & y >= 500]]
+  a3 <- x[y <= 500]
+  b3 <- y[x == x[y <= 500]]
+
   ### Cell size###
-  y <- toolGetMapping("LPJ_CellBelongingsToCountries.csv", type = "cell")
-  y <- (111e3 * 0.5) * (111e3 * 0.5) * cos(y$lat / 180 * pi) / 1000000000 # Mha
-  y <- as.magpie(y, spatial = 1)
-  getCells(y)  <- getCells(x0)
+  cellsize <- toolGetMapping("LPJ_CellBelongingsToCountries.csv", type = "cell")
+  cellsize <- (111e3 * 0.5) * (111e3 * 0.5) * cos(cellsize$lat / 180 * pi) / 1000000000 # Mha
+  cellsize <- as.magpie(cellsize, spatial = 1)
+  getCells(cellsize)  <- getCells(x0)
 
   # Area correction (only show areas where there is available irriagtion area > 1% of cellsize)
   z <- read.magpie(paste0(inputdatapath, "avlIrrigarea_pot.mz"))
-  cellshare                   <- z / y
+  cellshare                   <- z / cellsize
   cellshare[cellshare < 0.01] <- 0
 
   x0[cellshare == 0]       <- NA
@@ -57,9 +70,9 @@ plotMapEconOfIrrig <- function(version       = "GT500",
   x1000[cellshare == 0]    <- NA
 
   # Legend range adjustment
-  x0    <- x0 / y
-  x500  <- x500 / y
-  x1000 <- x1000 / y
+  x0    <- x0 / cellsize
+  x500  <- x500 / cellsize
+  x1000 <- x1000 / cellsize
   legendtitle  <- "Cellshare"
   legendrange  <- c(0, 0.1)
   legendbreaks <- seq(0, 0.1, 0.025)
@@ -121,7 +134,7 @@ plotMapEconOfIrrig <- function(version       = "GT500",
        colNA         = "transparent",
        legend.args   = list(text = ">0", side = 2, font = 1, line = 2, cex = 4, las = 2),
        axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 0.5),
-       smallplot     = c(0.5, 0.85, 0.03, 0.06),
+       smallplot     = c(0.4, 0.75, 0.03, 0.06),
        add = T)
   plot(x500, bg = "transparent",
        legend.only   = TRUE,
@@ -133,7 +146,7 @@ plotMapEconOfIrrig <- function(version       = "GT500",
        colNA         = "transparent",
        legend.args   = list(text = ">500", side = 2, font = 1, line = 2, cex = 4, las = 2),
        axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
-       smallplot     = c(0.5, 0.85, 0.06, 0.09),
+       smallplot     = c(0.4, 0.75, 0.06, 0.09),
        add = T)
   plot(x1000, bg = "transparent",
        legend.only   = TRUE,
@@ -145,10 +158,32 @@ plotMapEconOfIrrig <- function(version       = "GT500",
        colNA         = "transparent",
        legend.args   = list(text = ">1000", side = 2, font = 1, line = 2, cex = 4, las = 2),
        axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
-       smallplot     = c(0.5, 0.85, 0.09, 0.12),
+       smallplot     = c(0.4, 0.75, 0.09, 0.12),
        add = T)
-  title("Irrigation yield gain ", cex.main = 3.5, line = -112)
+  title("Irrigated area cell share for different irrigation yield gain thresholds ",
+        cex.main = 3.5, line = -115, adj = 0.6)
   # Curve Plot
+  par(fig = c(0.02, 0.22, 0.11, 0.41), bg = "white", new = TRUE,
+      mar = c(5.1, 6.5, 4.1, 2.1), xaxs = "i", yaxs = "i")
+  plot(x, y, bg = "white",
+       col = ifelse(y > 1000, "#cb181d", ifelse(y > 500, "#08306b", "#238b45")),
+       main = "Global potentially irrigated area \non potential cropland", cex.main = 2.5,
+       xlab = "Irrigated area (in Mha)",
+       ylab = "",
+       cex.lab = 2.5,
+       type = "p", pch = 19, lty = 1, lwd = 2,
+       bty = "l", yaxt = "n", xaxt = "n")
+  s <- seq(length(a1)-1)
+  segments(a1[s], b1[s], a1[s+1], b1[s+1], col= "#cb181d", lwd = 8)
+  s <- seq(length(a2)-1)
+  segments(a2[s], b2[s], a2[s+1], b2[s+1], col= "#08306b", lwd = 8)
+  s <- seq(length(a3)-1)
+  segments(a3[s], b3[s], a3[s+1], b3[s+1], col= "#238b45", lwd = 8)
+  axis(side = 1, cex.axis = 2.5, hadj = 0.5, padj = 0,
+       at = c(seq(from = 0, to = max(potCropland1$x),by = 200))) # x axis
+  axis(side = 2, cex.axis = 2.5, hadj = 1, padj = 0.5,
+       at = c(seq(from = 0, to = 3000, by = 500)), las = 1)      # y axis
+  mtext("Irrigation yield gain (in USD/ha)", side = 2, line = 6, cex = 2.5)
 
   dev.off()
 

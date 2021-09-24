@@ -241,7 +241,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
 
     dev.off()
 
-  } else (outputtype == "png_long") {
+  } else if (outputtype == "png_long") {
 
     l$ylim <-  c(-5600000, 8260000)
 
