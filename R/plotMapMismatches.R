@@ -29,12 +29,12 @@
 #'
 #' @export
 
-plotMapMismatches <- function(version = "GT500",
-                             observed = "cropareaLUH",
+plotMapMismatches <- function(version  = "MCfalse",
+                             observed  = "cropareaLUH",
                              projected = "irrigatableArea_potential",
-                             scenario = "off.ssp2",
-                             year = "y2010",
-                             output = "Mismatch") {
+                             scenario  = "off.ssp2",
+                             year      = "y2010",
+                             output    = "Mismatch") {
   ### Path ###
   inputdatapath <- paste0(getwd(), "/inputdata/", version, "/")
 

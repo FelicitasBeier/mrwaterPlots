@@ -27,7 +27,7 @@
 #'
 #' @export
 
-plotScatterIrrigArea <- function(version = "GT500",
+plotScatterIrrigArea <- function(version = "MCfalse",
                                  observed = "cropareaLUH",
                                  projected = "irrigatableArea_potential",
                                  scenario = "off.ssp2",

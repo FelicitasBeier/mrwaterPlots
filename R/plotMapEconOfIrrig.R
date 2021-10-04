@@ -19,7 +19,7 @@
 #' @export
 #'
 
-plotMapEconOfIrrig <- function(version       = "GT500",
+plotMapEconOfIrrig <- function(version       = "MCfalse",
                                multicropping = FALSE,
                                EFP           = "on") {
 
@@ -56,7 +56,7 @@ plotMapEconOfIrrig <- function(version       = "GT500",
 
   ### Cell size###
   cellsize <- toolGetMapping("LPJ_CellBelongingsToCountries.csv", type = "cell")
-  cellsize <- (111e3 * 0.5) * (111e3 * 0.5) * cos(cellsize$lat / 180 * pi) / 1000000000 # Mha
+  cellsize <- (111e3 * 0.5) * (111e3 * 0.5) * cos(cellsize$lat / 180 * pi) / 10000000000 # square meter -> Mha (1ha = 10000m^2)
   cellsize <- as.magpie(cellsize, spatial = 1)
   getCells(cellsize)  <- getCells(x0)
 
@@ -74,8 +74,8 @@ plotMapEconOfIrrig <- function(version       = "GT500",
   x500  <- x500 / cellsize
   x1000 <- x1000 / cellsize
   legendtitle  <- "Cellshare"
-  legendrange  <- c(0, 0.1)
-  legendbreaks <- seq(0, 0.1, 0.025)
+  legendrange  <- c(0, 1)
+  legendbreaks <- seq(0, 1, 0.25)
 
   # Transform magpie object to raster object
   l <- toolMapTransform(x = x0, projection =  "EqualEarth")
@@ -90,19 +90,25 @@ plotMapEconOfIrrig <- function(version       = "GT500",
   ### Create and save plot ###
   png(paste0("outputs/", filename, ".png"), height = 2000, width = 4000)
 
-  # Plot physical potential
-  par(bg = NA)
+  #pdf(paste0("outputs/", filename, ".pdf"), paper = "a4")
+
+
+  # Plot Map
+  par(bg = NA, plt = c(0, 1, 0.4, 1))
   plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim)
+
+  par(bg = NA, plt = c(0, 1, .4, 1), new = T)
   plot(x0, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
        legend       = FALSE,
        col          = c("#e5f5e0", "#a1d99b", "#238b45", "#00441b"), # green color scale
        zlim         = legendrange,
        breaks       = legendbreaks,
        colNA        = NA,
-       add          = T)
-  plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
-  plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
+       add = T)
+  # plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
+  # plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
 
+  par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
   plot(x500, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
        legend       = FALSE,
        col          = c("#deebf7", "#9ecae1", "#4292c6", "#08306b"), # blue color scale
@@ -110,9 +116,10 @@ plotMapEconOfIrrig <- function(version       = "GT500",
        breaks       = legendbreaks,
        colNA        = NA,
        add          = T)
-  plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
-  plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
+  # plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
+  # plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
 
+  par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
   plot(x1000, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
        legend       = FALSE,
        col          = c("#fee0d2", "#fc9272", "#cb181d", "#67000d"), # red color scale
@@ -120,48 +127,20 @@ plotMapEconOfIrrig <- function(version       = "GT500",
        breaks       = legendbreaks,
        colNA        = NA,
        add          = T)
+  # #par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
+  par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
   plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
-  plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
+   par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
+   plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
 
-  # Legend
-  plot(x0, bg = "transparent",
-       legend.only   = TRUE,
-       legend.width  = 1,
-       horizontal    = TRUE,
-       col           = c("#e5f5e0", "#a1d99b", "#238b45", "#00441b"), # green color scale
-       zlim          = legendrange,
-       breaks        = legendbreaks,
-       colNA         = "transparent",
-       legend.args   = list(text = ">0", side = 2, font = 1, line = 2, cex = 4, las = 2),
-       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 0.5),
-       smallplot     = c(0.4, 0.75, 0.03, 0.06),
-       add = T)
-  plot(x500, bg = "transparent",
-       legend.only   = TRUE,
-       legend.width  = 1,
-       horizontal    = TRUE,
-       col           = c("#deebf7", "#9ecae1", "#4292c6", "#08306b"), # blue color scale
-       zlim          = legendrange,
-       breaks        = legendbreaks,
-       colNA         = "transparent",
-       legend.args   = list(text = ">500", side = 2, font = 1, line = 2, cex = 4, las = 2),
-       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
-       smallplot     = c(0.4, 0.75, 0.06, 0.09),
-       add = T)
-  plot(x1000, bg = "transparent",
-       legend.only   = TRUE,
-       legend.width  = 1,
-       horizontal    = TRUE,
-       col           = c("#fee0d2", "#fc9272", "#cb181d", "#67000d"), # red color scale
-       zlim          = legendrange,
-       breaks        = legendbreaks,
-       colNA         = "transparent",
-       legend.args   = list(text = ">1000", side = 2, font = 1, line = 2, cex = 4, las = 2),
-       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
-       smallplot     = c(0.4, 0.75, 0.09, 0.12),
-       add = T)
-  title("Irrigated area cell share for different irrigation yield gain thresholds ",
-        cex.main = 3.5, line = -115, adj = 0.6)
+
+
+dev.off()
+
+  layout(matrix(c(1,1,2,3), nrow = 2, ncol = 2, byrow = TRUE),
+         heights = c(2, 1), widths = c(1, 1))
+
+
   # Curve Plot
   par(fig = c(0.02, 0.22, 0.11, 0.41), bg = "white", new = TRUE,
       mar = c(5.1, 6.5, 4.1, 2.1), xaxs = "i", yaxs = "i")
@@ -184,6 +163,46 @@ plotMapEconOfIrrig <- function(version       = "GT500",
   axis(side = 2, cex.axis = 2.5, hadj = 1, padj = 0.5,
        at = c(seq(from = 0, to = 3000, by = 500)), las = 1)      # y axis
   mtext("Irrigation yield gain (in USD/ha)", side = 2, line = 6, cex = 2.5)
+
+  # Legend
+  plot(x0, bg = "transparent",
+       legend.only   = TRUE,
+       legend.width  = 1,
+       horizontal    = TRUE,
+       col           = c("#e5f5e0", "#a1d99b", "#238b45", "#00441b"), # green color scale
+       zlim          = legendrange,
+       breaks        = legendbreaks,
+       colNA         = "transparent",
+       legend.args   = list(text = ">0", side = 2, font = 1, line = 2, cex = 4, las = 2),
+       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 0.5),
+       #smallplot     = c(0.4, 0.75, 0.03, 0.06),
+  )
+  plot(x500, bg = "transparent",
+       legend.only   = TRUE,
+       legend.width  = 1,
+       horizontal    = TRUE,
+       col           = c("#deebf7", "#9ecae1", "#4292c6", "#08306b"), # blue color scale
+       zlim          = legendrange,
+       breaks        = legendbreaks,
+       colNA         = "transparent",
+       legend.args   = list(text = ">500", side = 2, font = 1, line = 2, cex = 4, las = 2),
+       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
+       #smallplot     = c(0.4, 0.75, 0.06, 0.09),
+       add = T)
+  plot(x1000, bg = "transparent",
+       legend.only   = TRUE,
+       legend.width  = 1,
+       horizontal    = TRUE,
+       col           = c("#fee0d2", "#fc9272", "#cb181d", "#67000d"), # red color scale
+       zlim          = legendrange,
+       breaks        = legendbreaks,
+       colNA         = "transparent",
+       legend.args   = list(text = ">1000", side = 2, font = 1, line = 2, cex = 4, las = 2),
+       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
+       #smallplot     = c(0.4, 0.75, 0.09, 0.12),
+       add = T)
+  title("Irrigated area cell share for different irrigation yield gain thresholds ",
+        cex.main = 3.5, line = -115, adj = 0.6)
 
   dev.off()
 

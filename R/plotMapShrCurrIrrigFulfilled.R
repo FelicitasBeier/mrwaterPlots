@@ -19,7 +19,7 @@
 #' @export
 #'
 
-plotMapShrCurrIrrigFulfilled <- function(version  = "GT500",
+plotMapShrCurrIrrigFulfilled <- function(version  = "MCfalse",
                                          input    = "shrCurrIrrigFulfilled",
                                          year     = "y2010",
                                          scenario = "off.ssp2") {

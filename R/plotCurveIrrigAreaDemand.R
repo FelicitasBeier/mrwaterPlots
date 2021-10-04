@@ -15,12 +15,13 @@
 #'
 #' @export
 
-plotCurveIrrigAreaDemand <- function(version = "GT500",
-                                     EFP = "on",
+plotCurveIrrigAreaDemand <- function(version     = "MCfalse",
+                                     EFP         = "on",
                                      aggregation = "countries") {
 
   ### Path ###
-  inputdatapath <- paste0(getwd(), "/inputdata/", version, "/")
+  inputdatapath  <- paste0(getwd(), "/inputdata/", version, "/")
+  outputdatapath <- paste0(getwd(), "/outputs/")
 
   ### Read in data ###
   currCropland1   <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_curr_single.mz"))[, , EFP])
@@ -66,6 +67,7 @@ plotCurveIrrigAreaDemand <- function(version = "GT500",
     selectedBasins <- c("Chang Jiang", "Huang He", "Mekong",
                         "Mississippi", "Colorado", "Murray",
                         "Parana", "Ganges", "Indus")
+
     framestructure <- as.data.frame(new.magpie(cells_and_regions = selectedBasins,
                                                years = getYears(currCropland1),
                                                names = getNames(currCropland1)))
@@ -143,7 +145,8 @@ plotCurveIrrigAreaDemand <- function(version = "GT500",
                       panel.grid.minor.x = element_blank())
 
   ### Save Plot ###
-  ggsave(paste0(aggregation, "_Curves.pdf"), plot = out, width = 297, height = 210, units = "mm")
+
+  ggsave(paste0(outputdatapath, aggregation, "_Curves.pdf"), plot = out, width = 297, height = 210, units = "mm")
 
   return(out)
 }

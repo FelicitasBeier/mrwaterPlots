@@ -21,7 +21,7 @@
 #' @export
 #'
 
-plotMapYieldgainPotential <- function(version = "GT500",
+plotMapYieldgainPotential <- function(version = "MCfalse",
                                       input = "yieldgain_USDha",
                                       year  = "y2010",
                                       scenario = "off.ssp2") {

@@ -19,8 +19,8 @@
 #'
 #' @export
 
-plotMapMulticroppingZones <- function(version = "GT500",
-                                      input = "multicroppingZones") {
+plotMapMulticroppingZones <- function(version = "MCfalse",
+                                      input   = "multicroppingZones") {
 
   # Path
   inputdatapath <- paste0(getwd(), "/inputdata/", version, "/")

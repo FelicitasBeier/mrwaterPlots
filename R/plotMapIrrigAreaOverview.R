@@ -4,8 +4,6 @@
 #'
 #' @param version   subfolder of inputdata
 #' @param year      Year to be shown in plot
-#' @param scenario  EFP scenario and non-agricultural water use scenario
-#'                  separated by "."
 #'
 #' @return map of magpie cells
 #' @author Felicitas Beier
@@ -22,10 +20,9 @@
 #' @export
 #'
 
-plotMapIrrigAreaOverview <- function(version    = "GT500",
+plotMapIrrigAreaOverview <- function(version    = "MCfalse",
                                      year       = "y2010",
-                                     scenario   = "off.ssp2",
-                                     outputtype = "png") {
+                                     outputtype = "png_long") {
 
   projection <- "EqualEarth"
   filename   <- "IrrigAreaOverview"
@@ -40,7 +37,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
 
   #-#-# Read in data #-#-#
   # LUH irrigated areas
-  LUH     <- setYears(dimSums(collapseNames(read.magpie(paste0(inputdatapath, "cropareaLUH", ".mz"))[, , "irrigated"]), dim = 3), year)
+  LUH    <- setYears(dimSums(collapseNames(read.magpie(paste0(inputdatapath, "cropareaLUH", ".mz"))[, , "irrigated"]), dim = 3), year)
   # LUH sustainably irrigated areas
   LUHsus <- dimSums(read.magpie(paste0(inputdatapath, "LUHfulfilled_comag", ".mz"))[, year, "on"][, , "ssp2"][, , "irrigatable"], dim = 3)
 
@@ -54,7 +51,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
 
   ### Cell size###
   y <- toolGetMapping("LPJ_CellBelongingsToCountries.csv", type = "cell")
-  y <- (111e3 * 0.5) * (111e3 * 0.5) * cos(y$lat / 180 * pi) / 1000000000 # Mha
+  y <- (111e3 * 0.5) * (111e3 * 0.5) * cos(y$lat / 180 * pi) / 10000000000 # square meter -> Mha (1ha = 10000m^2)
   y <- as.magpie(y, spatial = 1)
   getCells(y)  <- getCells(currCropland)
 
@@ -74,8 +71,8 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
   currCropland <- currCropland / y
   potCropland  <- potCropland / y
   legendtitle  <- "Cellshare"
-  legendlimit  <- c(0, 0.1)
-  legendbreaks <- seq(0, 0.1, 0.025)
+  legendlimit  <- c(0, 1)
+  legendbreaks <- seq(0, 1, 0.25)
   legendcolor  <- c("#edf8e9", "#74c476", "#31a354", "#006d2c")
 #  legendcolor  <- c("#edf8e9", "#c7e9c0", "#a1d99b", "#74c476", "#31a354", "#006d2c")
 
@@ -243,7 +240,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
 
   } else if (outputtype == "png_long") {
 
-    l$ylim <-  c(-5600000, 8260000)
+    l$ylim <-  c(-5500000, 8260000)
 
     png(paste0("outputs/", filename, ".png"), height = 7000, width = 4000)
 
@@ -260,7 +257,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
          add          = T)
     plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
     plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
-    title("(a) Currently irrigated areas", outer = FALSE, cex.main = 6, line = -15)
+    title("(a) Currently irrigated areas", outer = FALSE, cex.main = 12, line = -15)
 
     ### Graph 3: Potentially irrigated areas on current cropland
     plot(landMask, border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, bg = "transparent")
@@ -273,7 +270,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
          add          = T)
     plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
     plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
-    title("(b) Potentially irrigated areas on current cropland", outer = FALSE, cex.main = 6, line = -15)
+    title("(b) Potentially irrigated areas on current cropland", outer = FALSE, cex.main = 12, line = -15)
 
     ### Graph 4: Potentially irrigated areas on potential cropland
     plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim)
@@ -286,7 +283,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
          add          = T)
     plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
     plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
-    title("(c) Potentially irrigated areas on potential cropland", outer = FALSE, cex.main = 6, line = -15)
+    title("(c) Potentially irrigated areas on potential cropland", outer = FALSE, cex.main = 12, line = -15)
 
     # Legend
     plot(potCropland, bg = "transparent",
@@ -296,8 +293,8 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
          zlim          = legendlimit,
          breaks        = legendbreaks,
          colNA         = "transparent",
-         legend.args   = list(text = legendtitle, side = 3, font = 1, line = 2, cex = 4),
-         axis.args     = list(cex.axis = 4, at = legendbreaks, line = 0, tick = FALSE, hadj = 0.5, padj = 0.5),
+         legend.args   = list(text = legendtitle, side = 3, font = 1, line = 2, cex = 8),
+         axis.args     = list(cex.axis = 10, at = legendbreaks, line = 0, tick = FALSE, hadj = 0.5, padj = 0.9),
          smallplot     = c(0.4, 0.75, 0.05, 0.1),
          add = T)
 
@@ -320,7 +317,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
          add          = T)
     plot(landMask, border = NA, col = "white", ylim = ylim, xlim = l$xlim, add = T)
     plot(worldCountries, ylim = ylim, xlim = l$xlim, add = T)
-    title("(a) Currently irrigated areas", outer = FALSE, cex.main = 1)
+    title("(a) Currently irrigated areas", outer = FALSE, cex.main = 3)
 
     ### Graph 3: Potentially irrigated areas on current cropland
     plot(landMask, border = NA, col = "white", ylim = ylim, xlim = l$xlim)
@@ -333,7 +330,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
          add          = T)
     plot(landMask, border = NA, col = "white", ylim = ylim, xlim = l$xlim, add = T)
     plot(worldCountries, ylim = ylim, xlim = l$xlim, add = T)
-    title("(b) Potentially irrigated areas on current cropland", outer = FALSE, cex.main = 1)
+    title("(b) Potentially irrigated areas on current cropland", outer = FALSE, cex.main = 3)
 
     ### Graph 4: Potentially irrigated areas on potential cropland
     plot(landMask, border = NA, col = "white", ylim = ylim, xlim = l$xlim)
@@ -346,7 +343,7 @@ plotMapIrrigAreaOverview <- function(version    = "GT500",
          add          = T)
     plot(landMask, border = NA, col = "white", ylim = ylim, xlim = l$xlim, add = T)
     plot(worldCountries, ylim = ylim, xlim = l$xlim, add = T)
-    title("(c) Potentially irrigated areas on potential cropland", outer = FALSE, cex.main = 1)
+    title("(c) Potentially irrigated areas on potential cropland", outer = FALSE, cex.main = 3)
 
     # Legend
     plot(potCropland,
