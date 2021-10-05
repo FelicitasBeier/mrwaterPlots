@@ -2,10 +2,7 @@
 #' @description plot validation graph of EFR-Accessibility combinations
 #'
 #' @param version   subfolder of inputdata
-#' @param input     Object containing the share of water that is fulfilled
 #' @param year      Year to be shown in plot
-#' @param scenario  EFP scenario and non-agricultural water use scenario
-#'                  separated by "."
 #'
 #' @return map of magpie cells
 #' @author Felicitas Beier
@@ -19,9 +16,9 @@
 #'
 
 plotValidAccessibility <- function(version  = "MCfalse",
-                                   input    = "shrCurrIrrigFulfilled",
-                                   year     = "y2010",
-                                   scenario = "off.ssp2") {
+                                   year     = "y2010") {
+
+  # Note: for validation com_ag is turned off!
 
   if (length(year) > 1) {
     stop("Please select one year only for Map depicting the share of current
@@ -30,72 +27,63 @@ plotValidAccessibility <- function(version  = "MCfalse",
 
   # Path
   inputdatapath <- paste0(getwd(), "/inputdata/", version, "/")
+  outputdatapath <- paste0(getwd(), "/outputs/")
 
   # Read in data
-  goodSmakhtinQ100 <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ1.mz")), dim = 1)
-  goodSmakhtinQ90  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ0.9.mz")), dim = 1)
-  goodSmakhtinQ75  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ0.75.mz")), dim = 1)
-  goodSmakhtinQ50  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ0.50.mz")), dim = 1)
-  goodSmakhtinCV2  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQCV2.mz")), dim = 1)
+  goodSmakhtinQ100 <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ1.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "goodSmakhtinQ100")
+  goodSmakhtinQ90  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ0.9.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "goodSmakhtinQ90")
+  goodSmakhtinQ75  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ0.75.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "goodSmakhtinQ75")
+  goodSmakhtinQ50  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodQ0.5.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "goodSmakhtinQ50")
+  goodSmakhtinCV2  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtingoodCV2.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "goodSmakhtinCV2")
 
-  fairSmakhtinQ100 <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ1.mz")), dim = 1)
-  fairSmakhtinQ90  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ0.9.mz")), dim = 1)
-  fairSmakhtinQ75  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ0.75.mz")), dim = 1)
-  fairSmakhtinQ50  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ0.50.mz")), dim = 1)
-  fairSmakhtinCV2  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQCV2.mz")), dim = 1)
+  fairSmakhtinQ100 <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ1.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairSmakhtinQ100")
+  fairSmakhtinQ90  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ0.9.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairSmakhtinQ90")
+  fairSmakhtinQ75  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ0.75.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairSmakhtinQ75")
+  fairSmakhtinQ50  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairQ0.5.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairSmakhtinQ50")
+  fairSmakhtinCV2  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandSmakhtinfairCV2.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairSmakhtinCV2")
 
-  fairVMFQ100 <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ1.mz")), dim = 1)
-  fairVMFQ90  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.9.mz")), dim = 1)
-  fairVMFQ75  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.75.mz")), dim = 1)
-  fairVMFQ50  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.50.mz")), dim = 1)
-  fairVMFCV2  <- dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQCV2.mz")), dim = 1)
+  fairVMFQ100 <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ1.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairVMFQ100")
+  fairVMFQ90  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.9.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairVMFQ90")
+  fairVMFQ75  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.75.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairVMFQ75")
+  fairVMFQ50  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.5.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairVMFQ50")
+  fairVMFCV2  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairCV2.mz")), dim = 1)[,,"on"]), dim = 3.1, nm = "fairVMFCV2")
 
+  OffQ100 <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ1.mz")), dim = 1)[,,"off"]), dim = 3.1, nm = "OffQ100")
+  OffQ90  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.9.mz")), dim = 1)[,,"off"]), dim = 3.1, nm = "OffQ90")
+  OffQ75  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.75.mz")), dim = 1)[,,"off"]), dim = 3.1, nm = "OffQ75")
+  OffQ50  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairQ0.5.mz")), dim = 1)[,,"off"]), dim = 3.1, nm = "OffQ50")
+  OffCV2  <- add_dimension(collapseNames(dimSums(read.magpie(paste0(inputdatapath, "ValidPotcroplandVMFfairCV2.mz")), dim = 1)[,,"off"]), dim = 3.1, nm = "OffCV2")
 
+  data <- as.data.frame(mbind(goodSmakhtinQ100, goodSmakhtinQ90, goodSmakhtinQ75, goodSmakhtinQ50, goodSmakhtinCV2,
+                              fairSmakhtinQ100, fairSmakhtinQ90, fairSmakhtinQ75, fairSmakhtinQ50, fairSmakhtinCV2,
+                              OffQ100, OffQ90, OffQ75, OffQ50, OffCV2,
+                              fairVMFQ100, fairVMFQ90, fairVMFQ75, fairVMFQ50, fairVMFCV2))
+  data <- data.frame(EFR = data$Data1, Accessibility = data$Data1, GT = as.numeric(as.character(data$Data2)), IrrigArea = data$Value)
+  data$Accessibility <- gsub("goodSmakhtin", "", data$Accessibility)
+  data$Accessibility <- gsub("fairSmakhtin", "", data$Accessibility)
+  data$Accessibility <- gsub("fairVMF", "", data$Accessibility)
+  data$Accessibility <- gsub("Off", "", data$Accessibility)
+  data$EFR <- gsub("Q100", "", data$EFR)
+  data$EFR <- gsub("Q90", "", data$EFR)
+  data$EFR <- gsub("Q75", "", data$EFR)
+  data$EFR <- gsub("Q50", "", data$EFR)
+  data$EFR <- gsub("CV2", "", data$EFR)
 
-  # check if EFR = off is the same everywhere (i.e. for Smakthin, VMF)
+  # Physical potential comparison
+  out <- ggplot(data[data$GT==0,], aes(y = IrrigArea, x = reorder(EFR, -IrrigArea), fill = reorder(Accessibility, -IrrigArea))) +
+              geom_bar(position = "dodge", stat = "identity") +
+              scale_fill_brewer(palette = "Dark2") +
+              labs(x = "EFR Method", y = "Potentially Irrigated Area (in Mha)", fill = "Accessibility Rule:") +
+              theme_minimal() +
+              theme(legend.position    = "bottom",
+                    legend.title       = element_text(size = 20),
+                    legend.text        = element_text(size = 18),
+                    axis.text.x        = element_text(size = 18),
+                    axis.text.y        = element_text(size = 18),
+                    axis.title.y       = element_text(size = 20),
+                    axis.title.x       = element_text(size = 20))
 
-# Note: for validation com_ag is turned off
-
-# List of colors for accessibility: c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00")
-
-  # Read in data
-  x <- collapseNames(read.magpie(paste0(inputdatapath, input, ".mz"))[, year, scenario])
-
-  plotMap(x = x, filename = input, legendtitle = "Fulfilled Share",
-          legendcolor = c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"))
+  ### Save Plot ###
+  ggsave(paste0(outputdatapath, "Validation_EFRAccessibility.pdf"), plot = out, width = 297, height = 210, units = "mm")
 
 }
-
-
-potCropland1      <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))[, , EFP])
-potCropland1      <- dimSums(potCropland1, dim = 1)
-getCells(potCropland1) <- "GLO"
-potCropland1           <- data.frame(y = as.numeric(as.character(as.data.frame(potCropland1)$Data1)),
-                                     x = as.data.frame(potCropland1)$Value, stringsAsFactors = FALSE)
-# For curve plot
-x  <- potCropland1$x
-y  <- potCropland1$y
-
-
-# Curve Plot
-par(fig = c(0.02, 0.22, 0.11, 0.41), bg = "white", new = TRUE,
-    mar = c(5.1, 6.5, 4.1, 2.1), xaxs = "i", yaxs = "i")
-plot(x, y, bg = "white",
-     col = ifelse(y > 1000, "#cb181d", ifelse(y > 500, "#08306b", "#238b45")),
-     main = "Global potentially irrigated area \non potential cropland", cex.main = 2.5,
-     xlab = "Irrigated area (in Mha)",
-     ylab = "",
-     cex.lab = 2.5,
-     type = "p", pch = 19, lty = 1, lwd = 2,
-     bty = "l", yaxt = "n", xaxt = "n")
-s <- seq(length(a1)-1)
-segments(a1[s], b1[s], a1[s+1], b1[s+1], col= "#cb181d", lwd = 8)
-s <- seq(length(a2)-1)
-segments(a2[s], b2[s], a2[s+1], b2[s+1], col= "#08306b", lwd = 8)
-s <- seq(length(a3)-1)
-segments(a3[s], b3[s], a3[s+1], b3[s+1], col= "#238b45", lwd = 8)
-axis(side = 1, cex.axis = 2.5, hadj = 0.5, padj = 0,
-     at = c(seq(from = 0, to = max(potCropland1$x),by = 200))) # x axis
-axis(side = 2, cex.axis = 2.5, hadj = 1, padj = 0.5,
-     at = c(seq(from = 0, to = 3000, by = 500)), las = 1)      # y axis
-mtext("Irrigation yield gain (in USD/ha)", side = 2, line = 6, cex = 2.5)

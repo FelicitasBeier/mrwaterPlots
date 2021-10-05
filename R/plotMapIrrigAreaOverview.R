@@ -11,7 +11,7 @@
 #' @examples
 #' \dontrun{ plotMapIrrigAreaOverview() }
 #'
-#' @importFrom magclass read.magpie
+#' @importFrom magclass read.magpie dimSums
 #' @importFrom luplot plotmap2
 #' @importFrom mrwater toolLPJarrayToMAgPIEmap
 #' @importFrom ggplot2 theme element_blank element_rect element_text
@@ -38,16 +38,37 @@ plotMapIrrigAreaOverview <- function(version    = "MCfalse",
   #-#-# Read in data #-#-#
   # LUH irrigated areas
   LUH    <- setYears(dimSums(collapseNames(read.magpie(paste0(inputdatapath, "cropareaLUH", ".mz"))[, , "irrigated"]), dim = 3), year)
+  croparea    <- setYears(dimSums(read.magpie(paste0(inputdatapath, "cropareaLUH", ".mz")), dim = 3), year)
   # LUH sustainably irrigated areas
-  LUHsus <- dimSums(read.magpie(paste0(inputdatapath, "LUHfulfilled_comag", ".mz"))[, year, "on"][, , "ssp2"][, , "irrigatable"], dim = 3)
+  LUHsus <- read.magpie(paste0(inputdatapath, "LUHfulfilled_comag", ".mz"))[, year, "ssp2.single.irrigatable"]
+  LUHunsus <- collapseNames(LUHsus[, , "off"])
+  LUHsus <- collapseNames(LUHsus[, , "on"])
 
   # Potentially Irrigated Areas (GT = 0) on current cropland
-  #currCropland   <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_curr_single.mz"))[, , "0"][, , "on"])
-  currCropland <- dimSums(read.magpie(paste0(inputdatapath, "irrigArea_currCropland_comag.mz"))[, year, "on"][, , "ssp2"][, , "irrigatable"], dim = 3)
+  currCropland <- read.magpie(paste0(inputdatapath, "DemandCurve_curr_single.mz"))[, , "0"]
+  currCroplandoff <- collapseNames(currCropland[, , "off"])
+  currCropland    <- collapseNames(currCropland[, , "on"])
 
   # Potentially Irrigated Areas (GT = 0) on potential cropland
-  #potCropland    <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))[, , "0"][, , "on"])
-  potCropland  <- dimSums(read.magpie(paste0(inputdatapath, "irrigArea_potCropland_comag.mz"))[, year, "on"][, , "ssp2"][, , "irrigatable"], dim = 3)
+  potCropland <- read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))[, , "0"]
+  potCroplandoff <- collapseNames(potCropland[, , "off"])
+  potCropland    <- collapseNames(potCropland[, , "on"])
+
+  avlIrrigarea_curr <- dimSums(read.magpie(paste0(inputdatapath, "avlIrrigarea_curr.mz")), dim = 1)
+  avlIrrigarea_pot  <- dimSums(read.magpie(paste0(inputdatapath, "avlIrrigarea_pot.mz")), dim = 1)
+
+  out <- paste0("Irrigated croparea in LUH is ", round(dimSums(LUH, dim = 1)),
+                " Mha. Of these ",  round(dimSums(LUHunsus, dim = 1)), " Mha can be fulfilled by local resources, and ",
+                round(dimSums(LUHsus, dim = 1)), " Mha can be fulfilled sustainably.",
+                "Of current croplands, ",  round(dimSums(currCroplandoff, dim = 1)), " Mha could be technically irrigated, ",
+                round(dimSums(currCropland, dim = 1)), " Mha could be irrigated sustainably. This is ",
+                round(100 * dimSums(currCropland, dim = 1) / dimSums(croparea, dim = 1), digits = 2), "% of current cropland",
+                "Of potential croplands, ",  round(dimSums(potCroplandoff, dim = 1)), " Mha could be technically irrigated, ",
+                round(dimSums(potCropland, dim = 1)), " Mha could be irrigated sustainably.",
+                "For comparison, there would be a total area of ", avlIrrigarea_curr, " Mha available when considering current cropland (without considering water constraints)",
+                "For comparison, there would be a total area of ", avlIrrigarea_pot, " Mha available when considering potential cropland (without considering water constraints)")
+
+  return(out)
 
   ### Cell size###
   y <- toolGetMapping("LPJ_CellBelongingsToCountries.csv", type = "cell")

@@ -2,7 +2,6 @@
 #' @description plot 3-layered map representing different irrigation gain thresholds
 #'
 #' @param version       subfolder of inputdata
-#' @param multicropping multicropping activated (TRUE) or not (FALSE)
 #' @param EFP           envrionmental flow protection activated ("on") or not ("off")
 #'
 #' @return map of magpie cells
@@ -20,7 +19,6 @@
 #'
 
 plotMapEconOfIrrig <- function(version       = "MCfalse",
-                               multicropping = FALSE,
                                EFP           = "on") {
 
   ### Path ###
@@ -31,12 +29,15 @@ plotMapEconOfIrrig <- function(version       = "MCfalse",
   irrigatableArea <- read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))
 
   x0                <- irrigatableArea[, , "0"][, , EFP]
-  x0[x0 == 0]       <- NA
-
   x500              <- irrigatableArea[, , "500"][, , EFP]
-  x500[x500 == 0]   <- NA
-
   x1000             <- irrigatableArea[, , "1000"][, , EFP]
+
+  out <- paste0("With threshold of 0, ", round(dimSums(x0, dim = 1)), " Mha could be irrigated with EFP=", EFP, ".",
+                "With threshold of 500, ", round(dimSums(x500, dim = 1)), " Mha could be irrigated with EFP=", EFP, ".",
+                "With threshold of 1000, ", round(dimSums(x1000, dim = 1)), " Mha could be irrigated with EFP=", EFP, ".")
+
+  x0[x0 == 0]       <- NA
+  x500[x500 == 0]   <- NA
   x1000[x1000 == 0] <- NA
 
   potCropland1      <- collapseNames(read.magpie(paste0(inputdatapath, "DemandCurve_pot_single.mz"))[, , EFP])
@@ -70,86 +71,99 @@ plotMapEconOfIrrig <- function(version       = "MCfalse",
   x1000[cellshare == 0]    <- NA
 
   # Legend range adjustment
-  x0    <- x0 / cellsize
-  x500  <- x500 / cellsize
-  x1000 <- x1000 / cellsize
+  x0Share    <- x0 / cellsize
+  x500Share  <- x500 / cellsize
+  x1000Share <- x1000 / cellsize
   legendtitle  <- "Cellshare"
   legendrange  <- c(0, 1)
   legendbreaks <- seq(0, 1, 0.25)
 
+  ### Create and save Legend plot ###
+  x0_000_025 <- sum(x0[x0Share<0.25 & is.na(x500) & is.na(x1000)], na.rm = TRUE)
+  x0_025_050 <- sum(x0[x0Share>=0.25 & x0Share<0.5 & is.na(x500) & is.na(x1000)], na.rm = TRUE)
+  x0_050_075 <- sum(x0[x0Share>=0.5 & x0Share<0.75 & is.na(x500) & is.na(x1000)], na.rm = TRUE)
+  x0_075_010 <- sum(x0[x0Share>=0.75 & is.na(x500) & is.na(x1000)], na.rm = TRUE)
+
+  x500_000_025 <- sum(x500[x500Share<0.25 & is.na(x1000)], na.rm = TRUE)
+  x500_025_050 <- sum(x500[x500Share>=0.25 & x500Share<0.5 & is.na(x1000)], na.rm = TRUE)
+  x500_050_075 <- sum(x500[x500Share>=0.5 & x500Share<0.75 & is.na(x1000)], na.rm = TRUE)
+  x500_075_010 <- sum(x500[x500Share>=0.75 & is.na(x1000)], na.rm = TRUE)
+
+  x1000_000_025 <- sum(x1000[x1000Share<0.25], na.rm = TRUE)
+  x1000_025_050 <- sum(x1000[x1000Share>=0.25 & x1000Share<0.5], na.rm = TRUE)
+  x1000_050_075 <- sum(x1000[x1000Share>=0.5 & x1000Share<0.75], na.rm = TRUE)
+  x1000_075_010 <- sum(x1000[x1000Share>=0.75], na.rm = TRUE)
+
+  colors <- c("#e5f5e0", "#a1d99b", "#238b45", "#00441b",
+              "#deebf7", "#9ecae1", "#4292c6", "#08306b",
+              "#fee0d2", "#fc9272", "#cb181d", "#67000d")
+  values <- c(x0_000_025, x0_025_050, x0_050_075, x0_075_010,
+              x500_000_025, x500_025_050, x500_050_075, x500_075_010,
+              x1000_000_025, x1000_025_050, x1000_050_075, x1000_075_010)
+
+  .boxes <- function(position = c(0, 0, 0.25, 1), color = "#e5f5e0", text = "some Mha") {
+
+    rect(position[1], position[2], position[3], position[4], border = "black", col = color)
+    text(mean(c(position[1], position[3])), mean(c(position[2], position[4])), text, cex = 3.5)
+
+  }
+
   # Transform magpie object to raster object
-  l <- toolMapTransform(x = x0, projection =  "EqualEarth")
-  x0             <- l$x1
-  l <- toolMapTransform(x = x500, projection =  "EqualEarth")
-  x500           <- l$x1
-  l <- toolMapTransform(x = x1000, projection =  "EqualEarth")
-  x1000          <- l$x1
+  l <- toolMapTransform(x = x0Share, projection =  "EqualEarth")
+  x0Share             <- l$x1
+  l <- toolMapTransform(x = x500Share, projection =  "EqualEarth")
+  x500Share           <- l$x1
+  l <- toolMapTransform(x = x1000Share, projection =  "EqualEarth")
+  x1000Share          <- l$x1
   landMask       <- l$landMask
   worldCountries <- l$worldCountries
 
-  ### Create and save plot ###
+  ### Create and save Map plot ###
   png(paste0("outputs/", filename, ".png"), height = 2000, width = 4000)
 
-  #pdf(paste0("outputs/", filename, ".pdf"), paper = "a4")
-
+  l$ylim <- c(-6084272, 8260000)
+  l$xlim <- c(-12577316, 15581284)
 
   # Plot Map
-  par(bg = NA, plt = c(0, 1, 0.4, 1))
+  par(mar = c(15, 6.5, 4.1, 2.1))
   plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim)
 
-  par(bg = NA, plt = c(0, 1, .4, 1), new = T)
-  plot(x0, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
+  plot(x0Share, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
        legend       = FALSE,
        col          = c("#e5f5e0", "#a1d99b", "#238b45", "#00441b"), # green color scale
        zlim         = legendrange,
        breaks       = legendbreaks,
        colNA        = NA,
        add = T)
-  # plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
-  # plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
 
-  par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
-  plot(x500, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
+  plot(x500Share, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
        legend       = FALSE,
        col          = c("#deebf7", "#9ecae1", "#4292c6", "#08306b"), # blue color scale
        zlim         = legendrange,
        breaks       = legendbreaks,
        colNA        = NA,
        add          = T)
-  # plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
-  # plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
 
-  par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
-  plot(x1000, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
+  plot(x1000Share, bg = "transparent", ylim = l$ylim, xlim = l$xlim,
        legend       = FALSE,
        col          = c("#fee0d2", "#fc9272", "#cb181d", "#67000d"), # red color scale
        zlim         = legendrange,
        breaks       = legendbreaks,
        colNA        = NA,
        add          = T)
-  # #par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
-  par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
+
   plot(landMask, bg = "transparent", border = NA, col = "white", ylim = l$ylim, xlim = l$xlim, add = T)
-   par(bg = NA, plt = c(0, 1, .4, 1), new = TRUE)
-   plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
-
-
-
-dev.off()
-
-  layout(matrix(c(1,1,2,3), nrow = 2, ncol = 2, byrow = TRUE),
-         heights = c(2, 1), widths = c(1, 1))
-
+  plot(worldCountries, bg = "transparent", ylim = l$ylim, xlim = l$xlim, add = T)
 
   # Curve Plot
-  par(fig = c(0.02, 0.22, 0.11, 0.41), bg = "white", new = TRUE,
-      mar = c(5.1, 6.5, 4.1, 2.1), xaxs = "i", yaxs = "i")
+  par(fig = c(0.03, 0.35, 0.01, 0.5), bg = "white", new = TRUE,
+      mar = c(7.1, 8.5, 4.1, 2.1), xaxs = "i", yaxs = "i")
   plot(x, y, bg = "white",
        col = ifelse(y > 1000, "#cb181d", ifelse(y > 500, "#08306b", "#238b45")),
-       main = "Global potentially irrigated area \non potential cropland", cex.main = 2.5,
-       xlab = "Irrigated area (in Mha)",
+       main = "",
+       xlab = "",
        ylab = "",
-       cex.lab = 2.5,
+       cex.lab = 3.5,
        type = "p", pch = 19, lty = 1, lwd = 2,
        bty = "l", yaxt = "n", xaxt = "n")
   s <- seq(length(a1)-1)
@@ -158,52 +172,34 @@ dev.off()
   segments(a2[s], b2[s], a2[s+1], b2[s+1], col= "#08306b", lwd = 8)
   s <- seq(length(a3)-1)
   segments(a3[s], b3[s], a3[s+1], b3[s+1], col= "#238b45", lwd = 8)
-  axis(side = 1, cex.axis = 2.5, hadj = 0.5, padj = 0,
+  axis(side = 1, cex.axis = 4, hadj = 0.5, padj = 0.5,
        at = c(seq(from = 0, to = max(potCropland1$x),by = 200))) # x axis
-  axis(side = 2, cex.axis = 2.5, hadj = 1, padj = 0.5,
+  axis(side = 2, cex.axis = 4, hadj = 1, padj = 0.5,
        at = c(seq(from = 0, to = 3000, by = 500)), las = 1)      # y axis
-  mtext("Irrigation yield gain (in USD/ha)", side = 2, line = 6, cex = 2.5)
+  mtext("Irrigation yield gain (in USD/ha)", side = 2, line = 10, cex = 4.5)
+  mtext("Irrigated area (in Mha)", side = 1, line = 7, cex = 4.5)
+  title("Global \npotentially irrigated area \non potential cropland", cex.main = 4.5, line = -15, adj = 0.25)
+
 
   # Legend
-  plot(x0, bg = "transparent",
-       legend.only   = TRUE,
-       legend.width  = 1,
-       horizontal    = TRUE,
-       col           = c("#e5f5e0", "#a1d99b", "#238b45", "#00441b"), # green color scale
-       zlim          = legendrange,
-       breaks        = legendbreaks,
-       colNA         = "transparent",
-       legend.args   = list(text = ">0", side = 2, font = 1, line = 2, cex = 4, las = 2),
-       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 0.5),
-       #smallplot     = c(0.4, 0.75, 0.03, 0.06),
-  )
-  plot(x500, bg = "transparent",
-       legend.only   = TRUE,
-       legend.width  = 1,
-       horizontal    = TRUE,
-       col           = c("#deebf7", "#9ecae1", "#4292c6", "#08306b"), # blue color scale
-       zlim          = legendrange,
-       breaks        = legendbreaks,
-       colNA         = "transparent",
-       legend.args   = list(text = ">500", side = 2, font = 1, line = 2, cex = 4, las = 2),
-       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
-       #smallplot     = c(0.4, 0.75, 0.06, 0.09),
-       add = T)
-  plot(x1000, bg = "transparent",
-       legend.only   = TRUE,
-       legend.width  = 1,
-       horizontal    = TRUE,
-       col           = c("#fee0d2", "#fc9272", "#cb181d", "#67000d"), # red color scale
-       zlim          = legendrange,
-       breaks        = legendbreaks,
-       colNA         = "transparent",
-       legend.args   = list(text = ">1000", side = 2, font = 1, line = 2, cex = 4, las = 2),
-       axis.args     = list(cex.axis = 4, at = legendbreaks, tick = FALSE, hadj = 0.5, padj = 50),
-       #smallplot     = c(0.4, 0.75, 0.09, 0.12),
-       add = T)
-  title("Irrigated area cell share for different irrigation yield gain thresholds ",
-        cex.main = 3.5, line = -115, adj = 0.6)
+  par(mar = c(7.5, 15.1, 4.1, 1.1), fig = c(0.45, 0.95, 0, 0.18), new = TRUE)
+  plot(c(0, 1), c(0, 3), type = "n", xlab = "", ylab = "", axes = FALSE)
+  axis(side = 1, col = NA, col.ticks = NA, at = legendbreaks, cex.axis = 3.5, padj = 0.6)
+  axis(side = 2, col = NA, col.ticks = NA, at = c(1, 2, 3), cex.axis = 3.5,
+       hadj = 1.1, padj = 0.9, c("0-500 USD/ha", "500-1000 USD/ha", ">1000 USD/ha"), las = 2)
+  mtext("Cell share", side = 1, line = 6, cex = 4)
+  i <- 0
+  for (threshold in c(1, 2, 3)) {
+    for (share in c(0.25, 0.5, 0.75, 1)) {
+      i <- i + 1
+      .boxes(position = c(share-0.25, threshold-1, share, threshold),
+             color = colors[i], text = paste0(round(values[i]), " Mha"))
+
+    }
+  }
 
   dev.off()
+
+  return(out)
 
 }
